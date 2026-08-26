@@ -1,0 +1,27 @@
+name: 'Generate ML-DSA Signatures'
+description: Generates a signatures file from a list of glob patterns using ML-DSA-87 (FIPS 204) post-quantum signatures
+inputs:
+  hexseed:
+    description: ML-DSA hexseed to use for signing
+    required: true
+  context:
+    description: Context string for ML-DSA-87 domain separation (required, 0-255 bytes)
+    required: true
+  output:
+    description: Output file path for signatures
+    required: false
+    default: signatures.txt
+  patterns:
+    description: List of glob patterns to use for matching files to sign
+    required: true
+runs:
+  using: docker
+  image: docker://ghcr.io/theqrl/actions-mldsa-sign:v1.0.0
+  args:
+    - ${{ inputs.hexseed }}
+    - ${{ inputs.context }}
+    - ${{ inputs.output }}
+    - ${{ inputs.patterns }}
+branding:
+  icon: shield
+  color: blue

@@ -1,0 +1,26 @@
+name: Generate ML-DSA Signatures
+
+on: workflow_dispatch
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Generate Signatures
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Generate signatures
+        uses: theqrl/actions-mldsa-sign@v1
+        with:
+          patterns: |
+            *.*
+          hexseed: ${{ secrets.MLDSA_HEXSEED }}
+          context: github-action-test
+      - name: Upload signature file as artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: signatures
+          path: signatures.txt
