@@ -108,7 +108,7 @@ Three changes when switching a workflow from `actions-dilithium-sign@v2`:
 
 1. `uses: theQRL/actions-mldsa-sign@v1` (or pin the commit SHA)
 2. Add the new required `context` input and pick a stable, application-specific value — verifiers must use the same string forever after
-3. The `hexseed` secret must be a fresh **ML-DSA** hexseed (32 bytes / 64 hex chars — generate one as below); a Dilithium hexseed is 48 bytes and will be rejected
+3. The `hexseed` secret must be a **fresh ML-DSA hexseed** (generate one as below). Dilithium and ML-DSA-87 seeds are both 32 bytes (64 hex characters), so reusing an old Dilithium hexseed is *not* rejected — it is silently expanded into a different ML-DSA key, producing signatures that fail against whichever public key you published. Generate a new keypair and publish its public key
 
 `patterns` and `output` are unchanged, and the signatures file format is the same.
 
