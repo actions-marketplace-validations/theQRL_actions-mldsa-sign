@@ -184,6 +184,26 @@ jq -r '.artifacts[] | select(.filename == "file.zip") | .sha256' manifest.json
 The second check is the stronger one, and it is the one that catches an old
 build wearing a new build's name.
 
+## Signing a manifest for an older release
+
+A manifest does not have to be produced at release time. It states which bytes
+belong to which release, and that stays true afterwards, so a release published
+before v2 can be given one without rebuilding or re-tagging anything:
+
+```bash
+./backfill-manifest.sh "$MLDSA_HEXSEED" qrlft v4.0.3
+```
+
+This downloads the release's artifacts, hashes them, cross-checks each digest
+against the one the release page publishes, and writes
+`qrlft_v4.0.3_manifest.json` and its `.sig`. Upload both to the existing release
+as additional assets.
+
+The artifacts are downloaded and hashed rather than trusting the published
+digests, because this signs a statement about them — attesting to a digest you
+have not computed is not much of an attestation. A release whose served bytes
+disagree with its own published digests is refused rather than signed over.
+
 ## Upgrading from v1
 
 v1 wrote only a signatures file. v2 writes a signed manifest as well, which is a
