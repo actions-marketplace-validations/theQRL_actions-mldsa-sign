@@ -24,6 +24,18 @@ ok() { pass=$((pass + 1)); echo "  ok    $1"; }
 no() { fail=$((fail + 1)); echo "  FAIL  $1"; }
 check() { if [ "$1" = "yes" ]; then ok "$2"; else no "$2"; fi; }
 
+# qrlft writes .private.hexseed in one of two shapes depending on its version.
+# Up to v4.0.3 it was a bare hex line between PEM markers; newer builds write the
+# seed-only PKCS#8 form that RFC 9881 recommends, under the same filename. The
+# action's --hexseed input takes the raw hex either way, so read both.
+seed_from() {
+  if grep -q "PRIVATE HEXSEED" "$1"; then
+    sed -n 2p "$1" | sed 's/^0x//'
+  else
+    sed '1d;$d' "$1" | tr -d '\n' | base64 -d | tail -c 32 | xxd -p | tr -d '\n'
+  fi
+}
+
 # Fails when the command succeeds, which is what most of these assert.
 refuses() {
   local why="$1"; shift
@@ -45,7 +57,7 @@ printf 'linux payload'   > dist/testapp_v1.0.0_linux_amd64.zip
 printf 'windows payload' > dist/testapp_v1.0.0_windows_amd64.zip
 
 "$QRLFT" new -a mldsa --context="testapp-release-signatures" key > /dev/null
-SEED="$(sed -n 2p key.private.hexseed | sed 's/^0x//')"
+SEED="$(seed_from key.private.hexseed)"
 
 echo
 echo "signing"
