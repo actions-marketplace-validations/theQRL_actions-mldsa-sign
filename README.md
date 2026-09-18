@@ -21,20 +21,14 @@ This action supersedes [actions-dilithium-sign](https://github.com/theQRL/action
 This writes three files: `signatures.txt` as before, plus `manifest.json` and
 `manifest.json.sig`. Upload all three to the release.
 
-## Why there is a manifest
+## The manifest
 
 A signature covers a file's bytes and a context string. It does not cover the
-filename, so it proves the key holder produced these bytes for this product —
-and nothing about *which release they are*.
+filename, so it establishes that the key holder produced these bytes for this
+product, and nothing about which release they belong to.
 
-That gap is exploitable. Take a correctly signed archive from an old release
-with a known flaw, present it under a current release's filename, and a verifier
-checking signatures alone accepts it. Nothing cryptographic fails, because the
-bytes really were signed. What is false is the identity, and the identity is
-exactly what the signature omits.
-
-The manifest is the missing statement. It lists every artifact in the release
-with its digest, names the product and tag, and is signed as a whole:
+The manifest supplies that. It lists every artifact in the release with its
+digest, names the product and tag, and is signed as a whole:
 
 ```json
 {
@@ -52,18 +46,16 @@ with its digest, names the product and tag, and is signed as a whole:
 }
 ```
 
-A verifier hashes the file in front of it, finds that digest in the manifest,
-and checks the manifest's signature. Renaming the file changes nothing, because
-the digest does the looking up and the name is what the manifest returns.
+A verifier hashes the file, finds that digest in the manifest, and checks the
+manifest's signature. The lookup is by digest, so the filename is an output
+rather than an input.
 
-It is signed under a context of its own, `<product>-release-manifest`, never the
-one used for artifacts. FIPS 204 mixes the context into the message, so a
-manifest signature cannot be presented as an artifact signature or the reverse.
-The action refuses to run if the two contexts are equal.
+It is signed under `<product>-release-manifest`, never the artifact context.
+FIPS 204 mixes the context into the message, so neither signature can be
+presented as the other. The action refuses to run if the two are equal.
 
-The manifest is byte-reproducible: artifacts are sorted by filename and the
-formatting is fixed, so anyone can rebuild it from the release and check it
-against the published signature.
+Artifacts are sorted by filename and the formatting is fixed, so the manifest is
+byte-reproducible from the release.
 
 ## Inputs
 
@@ -80,10 +72,10 @@ against the published signature.
 
 ### Determining the product
 
-The product names the release and picks the manifest's context, so the action
-will not guess it. Where `context` follows the `<product>-release-signatures`
-convention it is derived from there. Where it does not, set `product` explicitly
-or set `manifest: ''` to opt out — the action fails rather than inventing one.
+The product picks the manifest's context, so the action will not guess it. It is
+derived from `context` where that follows the `<product>-release-signatures`
+convention. Otherwise set `product`, or set `manifest: ''` to opt out; the
+action fails rather than inventing one.
 
 ## Context Parameter
 
@@ -109,10 +101,9 @@ for the manifest.
 7a8b9c...signature_hex... filename2.tar.gz
 ```
 
-`manifest.json`, the release's contents as described above, and
-`manifest.json.sig`, a hex signature over that file's exact bytes. Publish all
-three: the signatures file lets each artifact be checked on its own, and the
-manifest is what establishes which release an artifact belongs to.
+`manifest.json`, as described above, and `manifest.json.sig`, a hex signature
+over that file's exact bytes. Publish all three: the signatures file checks each
+artifact on its own, the manifest establishes which release it belongs to.
 
 ## Example: Sign release artifacts
 
@@ -192,14 +183,13 @@ sha256sum file.zip
 jq -r '.artifacts[] | select(.filename == "file.zip") | .sha256' manifest.json
 ```
 
-The second check is the stronger one, and it is the one that catches an old
-build wearing a new build's name.
+The second check establishes the release; the first only establishes the
+bytes.
 
 ## Signing a manifest for an older release
 
-A manifest does not have to be produced at release time. It states which bytes
-belong to which release, and that stays true afterwards, so a release published
-before v2 can be given one without rebuilding or re-tagging anything:
+A manifest can be produced after the fact, so a release published before v2 can
+be given one without rebuilding or re-tagging:
 
 ```bash
 QRLFT=/path/to/qrlft ./backfill-manifest.sh "$MLDSA_HEXSEED" qrlft v4.0.3
@@ -214,29 +204,25 @@ against the one the release page publishes, and writes
 `qrlft_v4.0.3_manifest.json` and its `.sig`. Upload both to the existing release
 as additional assets.
 
-The artifacts are downloaded and hashed rather than trusting the published
-digests, because this signs a statement about them — attesting to a digest you
-have not computed is not much of an attestation. A release whose served bytes
-disagree with its own published digests is refused rather than signed over.
+Digests are computed locally rather than taken from the release page. A release
+whose served bytes disagree with its published digests is refused.
 
 ## Upgrading from v1
 
-v1 wrote only a signatures file. v2 writes a signed manifest as well, which is a
-new output and, for most workflows, the only change needed is uploading the two
-extra files to the release.
+v1 wrote only a signatures file. v2 adds a signed manifest, so for most
+workflows the only change is uploading the two extra files to the release.
 
-It can fail where v1 would not, in one case: if `context` does not end in
-`-release-signatures`, the action cannot tell what the product is and stops. Set
-`product`, or set `manifest: ''` to keep v1's behaviour exactly.
+One case fails where v1 would not: a `context` not ending in
+`-release-signatures` leaves the product underivable and the action stops. Set
+`product`, or `manifest: ''` for v1 behaviour.
 
 ## Testing
 
-`./test/run.sh` signs a fixture release with a real qrlft and checks the
-properties the manifest exists for — the context separation, the refusals, and
-that a rebuild is byte-identical.
+`./test/run.sh` signs a fixture release with a real qrlft and checks the context
+separation, the refusals, and a byte-identical rebuild.
 
 It builds the qrlft commit the Dockerfile pins, so it needs Go and `jq`; set
-`QRLFT` to skip the build and use an existing binary. CI runs it on every push.
+`QRLFT` to use an existing binary instead. CI runs it on every push.
 
 ## Migrating from actions-dilithium-sign
 
@@ -244,7 +230,7 @@ Three changes when switching a workflow from `actions-dilithium-sign@v2`:
 
 1. `uses: theQRL/actions-mldsa-sign@v2` (or pin the commit SHA)
 2. Add the new required `context` input and pick a stable, application-specific value — verifiers must use the same string forever after
-3. The `hexseed` secret must be a **fresh ML-DSA hexseed** (generate one as below). Dilithium and ML-DSA-87 seeds are both 32 bytes (64 hex characters), so reusing an old Dilithium hexseed is *not* rejected — it is silently expanded into a different ML-DSA key, producing signatures that fail against whichever public key you published. Generate a new keypair and publish its public key
+3. The `hexseed` secret must be a **fresh ML-DSA hexseed** (generate one as below). Dilithium and ML-DSA-87 seeds are both 32 bytes, so an old Dilithium hexseed is accepted and expanded into a different ML-DSA key, producing signatures that fail against the published public key. Generate a new keypair and publish its public key
 
 `patterns` and `output` are unchanged, and the signatures file format is the same.
 
@@ -257,6 +243,10 @@ Three changes when switching a workflow from `actions-dilithium-sign@v2`:
 | Use case | New applications | Legacy compatibility |
 
 For new projects, ML-DSA-87 is recommended as it follows the FIPS 204 standard.
+
+## Releasing
+
+Cutting a version of this action is documented in [RELEASE.md](RELEASE.md).
 
 ## License
 
