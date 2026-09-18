@@ -8,7 +8,7 @@ This action supersedes [actions-dilithium-sign](https://github.com/theQRL/action
 ## Usage
 
 ```yaml
-- uses: theQRL/actions-mldsa-sign@v1
+- uses: theQRL/actions-mldsa-sign@v2
   with:
     patterns: |
       dist/*.zip
@@ -87,11 +87,18 @@ or set `manifest: ''` to opt out — the action fails rather than inventing one.
 
 ## Context Parameter
 
-ML-DSA-87 (FIPS 204) requires a context string for domain separation. This ensures signatures created for one purpose cannot be reused for another.
+ML-DSA-87 (FIPS 204) requires a context string for domain separation. This
+ensures signatures created for one purpose cannot be reused for another.
 
-- Use a unique, application-specific context (e.g., `myapp-releases-v1`)
-- The same context must be used for both signing and verification
+- Name it `<product>-release-signatures`. The action reads the product from that
+  to derive the manifest's context, so following the convention means there is
+  nothing else to configure. Any other shape needs `product` set explicitly.
+- The same context must be used for both signing and verification, forever
 - Context can be 0-255 bytes
+
+Two contexts are in play per product, and they must never be the same string:
+`<product>-release-signatures` for the artifacts, `<product>-release-manifest`
+for the manifest.
 
 ## Outputs
 
@@ -129,21 +136,25 @@ jobs:
         run: make build
 
       - name: Sign artifacts with ML-DSA
-        uses: theQRL/actions-mldsa-sign@v1
+        uses: theQRL/actions-mldsa-sign@v2
         with:
           patterns: |
             dist/*.zip
           hexseed: ${{ secrets.MLDSA_HEXSEED }}
           context: myapp-release-signatures
-          output: signatures.txt
+          # Naming the outputs for the release is worth doing: they are published
+          # side by side with every other release's, and a bare manifest.json
+          # collides the moment anyone downloads two of them.
+          output: myapp_${{ github.ref_name }}_signatures.txt
+          manifest: myapp_${{ github.ref_name }}_manifest.json
 
       - name: Upload signatures and manifest to release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            signatures.txt
-            manifest.json
-            manifest.json.sig
+            myapp_${{ github.ref_name }}_signatures.txt
+            myapp_${{ github.ref_name }}_manifest.json
+            myapp_${{ github.ref_name }}_manifest.json.sig
 ```
 
 ## Generating a hexseed
@@ -151,7 +162,7 @@ jobs:
 Use [qrlft](https://github.com/theQRL/qrlft) to generate a new ML-DSA keypair:
 
 ```bash
-qrlft new -a mldsa --context="my-app-releases" mykey
+qrlft new -a mldsa --context="my-app-release-signatures" mykey
 ```
 
 This creates:
@@ -191,8 +202,12 @@ belong to which release, and that stays true afterwards, so a release published
 before v2 can be given one without rebuilding or re-tagging anything:
 
 ```bash
-./backfill-manifest.sh "$MLDSA_HEXSEED" qrlft v4.0.3
+QRLFT=/path/to/qrlft ./backfill-manifest.sh "$MLDSA_HEXSEED" qrlft v4.0.3
 ```
+
+`QRLFT` points at a qrlft binary; inside the action's image it is already
+`/qrlft/qrlft` and can be left unset. `jq` and `curl` are needed too. A fourth
+argument overrides the repository, which defaults to `theQRL/<product>`.
 
 This downloads the release's artifacts, hashes them, cross-checks each digest
 against the one the release page publishes, and writes
@@ -218,14 +233,16 @@ It can fail where v1 would not, in one case: if `context` does not end in
 
 `./test/run.sh` signs a fixture release with a real qrlft and checks the
 properties the manifest exists for — the context separation, the refusals, and
-that a rebuild is byte-identical. It builds the qrlft commit the Dockerfile pins,
-or uses `QRLFT` if set.
+that a rebuild is byte-identical.
+
+It builds the qrlft commit the Dockerfile pins, so it needs Go and `jq`; set
+`QRLFT` to skip the build and use an existing binary. CI runs it on every push.
 
 ## Migrating from actions-dilithium-sign
 
 Three changes when switching a workflow from `actions-dilithium-sign@v2`:
 
-1. `uses: theQRL/actions-mldsa-sign@v1` (or pin the commit SHA)
+1. `uses: theQRL/actions-mldsa-sign@v2` (or pin the commit SHA)
 2. Add the new required `context` input and pick a stable, application-specific value — verifiers must use the same string forever after
 3. The `hexseed` secret must be a **fresh ML-DSA hexseed** (generate one as below). Dilithium and ML-DSA-87 seeds are both 32 bytes (64 hex characters), so reusing an old Dilithium hexseed is *not* rejected — it is silently expanded into a different ML-DSA key, producing signatures that fail against whichever public key you published. Generate a new keypair and publish its public key
 
