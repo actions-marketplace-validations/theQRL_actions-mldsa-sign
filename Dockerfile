@@ -10,8 +10,13 @@ RUN go mod download
 RUN CGO_ENABLED=0 go build -o qrlft .
 
 FROM debian:bookworm-slim
+# jq builds the manifest JSON. Hand-rolling it in shell would mean hand-rolling
+# the escaping too, on strings that come from filenames.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends jq \
+ && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /qrlft/qrlft /qrlft/qrlft
-COPY entrypoint.sh /qrlft/entrypoint.sh
-RUN chmod +x /qrlft/entrypoint.sh
+COPY entrypoint.sh build-manifest.sh /qrlft/
+RUN chmod +x /qrlft/entrypoint.sh /qrlft/build-manifest.sh
 
 ENTRYPOINT ["/qrlft/entrypoint.sh"]

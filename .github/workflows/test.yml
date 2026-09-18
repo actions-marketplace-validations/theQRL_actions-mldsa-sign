@@ -1,0 +1,23 @@
+name: Test
+
+on:
+  push:
+    paths-ignore: ['**.md']
+  pull_request:
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      # Builds the qrlft commit the Dockerfile pins, so the test signs with the
+      # same code the published image does.
+      - run: ./test/run.sh
