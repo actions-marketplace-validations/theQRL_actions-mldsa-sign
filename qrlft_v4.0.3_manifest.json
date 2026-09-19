@@ -1,0 +1,38 @@
+{
+  "schema": "theqrl.release-manifest.v1",
+  "product": "qrlft",
+  "tag": "v4.0.3",
+  "context": "qrlft-release-signatures",
+  "artifacts": [
+    {
+      "filename": "qrlft_v4.0.3_darwin_amd64.zip",
+      "size": 1906648,
+      "sha256": "2d4eb3b116c42df71bb5eb31c35b19f0b2be39cd9fd072f02267c004d1923c91"
+    },
+    {
+      "filename": "qrlft_v4.0.3_darwin_arm64.zip",
+      "size": 1785345,
+      "sha256": "897b3fb0129943d2715eb553367dea4c08e7631b5ea69ab713fa50a8b95133ea"
+    },
+    {
+      "filename": "qrlft_v4.0.3_linux_amd64.zip",
+      "size": 1898273,
+      "sha256": "bb5de924a2f4f17f392f17d602d50a6d9038220891670664e46801d8b02f5089"
+    },
+    {
+      "filename": "qrlft_v4.0.3_linux_arm.zip",
+      "size": 1801794,
+      "sha256": "c05e15ebfeafeed04e8d31197846e92f21aaba53f7b9e9f5be0a440efeb985e8"
+    },
+    {
+      "filename": "qrlft_v4.0.3_linux_arm64.zip",
+      "size": 1744004,
+      "sha256": "733ddf6e4296392b693cee312f5e8633a16a136754ce1bc7d1a49f812c1bec0d"
+    },
+    {
+      "filename": "qrlft_v4.0.3_windows_amd64.zip",
+      "size": 1956038,
+      "sha256": "25437aef025aa5c62842e46a4914e3219e120fa297df9fdd0f70c64d76b79c7f"
+    }
+  ]
+}

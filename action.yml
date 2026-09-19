@@ -1,5 +1,5 @@
 name: 'Generate ML-DSA Signatures'
-description: Generates a signatures file from a list of glob patterns using ML-DSA-87 (FIPS 204) post-quantum signatures
+description: Generates a signatures file and a signed release manifest from a list of glob patterns, using ML-DSA-87 (FIPS 204) post-quantum signatures
 inputs:
   hexseed:
     description: ML-DSA hexseed to use for signing
@@ -14,14 +14,41 @@ inputs:
   patterns:
     description: List of glob patterns to use for matching files to sign
     required: true
+  product:
+    description: >-
+      Product name recorded in the manifest and used to derive its context.
+      Defaults to the artifact context with '-release-signatures' removed.
+    required: false
+    default: ''
+  tag:
+    description: Release tag recorded in the manifest. Defaults to the ref name.
+    required: false
+    default: ${{ github.ref_name }}
+  manifest:
+    description: >-
+      Output path for the signed release manifest, which binds each artifact's
+      filename to its digest so a verifier can establish which release a file
+      belongs to. Set to an empty string to sign artifacts only.
+    required: false
+    default: manifest.json
+  manifest-context:
+    description: >-
+      Context for the manifest signature. Must differ from the artifact context.
+      Defaults to '<product>-release-manifest'.
+    required: false
+    default: ''
 runs:
   using: docker
-  image: docker://ghcr.io/theqrl/actions-mldsa-sign:v1.0.0
+  image: docker://ghcr.io/theqrl/actions-mldsa-sign:v2.0.0
   args:
     - ${{ inputs.hexseed }}
     - ${{ inputs.context }}
     - ${{ inputs.output }}
     - ${{ inputs.patterns }}
+    - ${{ inputs.product }}
+    - ${{ inputs.tag }}
+    - ${{ inputs.manifest }}
+    - ${{ inputs.manifest-context }}
 branding:
   icon: shield
   color: blue
